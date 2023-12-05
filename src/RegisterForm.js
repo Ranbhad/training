@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { Radio, Typography, TextField } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) => {
   const [email, setEmail] = useState('');
+  const navigate = useNavigate();
+  const [instituteKey, setInstituteKey] = useState('');
   const [password, setPassword] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [userType, setUserType] = useState('');
-  const [secretkey, setSecretKey] = useState('');
+  const [secretKey, setSecretKey] = useState('');
   const [registeredSuccessfully, setRegisteredSuccessfully] = useState(false);
 
   const validateEmail = () => {
@@ -32,11 +36,34 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
 
   const handleRegister = async () => {
     try {
-      const response = await axios.post('http://localhost:8080/register', {
-        email: email,
-        password: password,
-        userType: userType,
-      });
+      let registrationData;
+
+      if (userType === 'user') {
+        // Check if instituteKey exists in admin table only for user registration
+        const adminResponse = await axios.get(`http://localhost:8080/getAdmin?instituteKey=${instituteKey}`);
+
+        if (adminResponse && adminResponse.status === 200) {
+          registrationData = {
+            email: email,
+            password: password,
+            userType: userType,
+            instituteKey: instituteKey,
+          };
+        } else {
+          alert('Invalid instituteKey');
+          return;
+        }
+      } else {
+        // No need to check instituteKey for admin registration
+        registrationData = {
+          email: email,
+          password: password,
+          userType: userType,
+          instituteKey: instituteKey,
+        };
+      }
+
+      const response = await axios.post(`http://localhost:8080/register/${userType}`, registrationData);
 
       if (response && response.status === 200 && response.data === 'Registration successful') {
         alert('Registration successful');
@@ -44,6 +71,7 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
         onRegisteredSuccessfully();
         onToggleForm();
         setRegisteredSuccessfully(true);
+        navigate('/login');
       }
     } catch (error) {
       if (error.response && error.response.status === 400) {
@@ -55,7 +83,7 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
   };
 
   const handleSubmit = (e) => {
-    if (userType === 'admin' && secretkey !== 'admin') {
+    if (userType === 'admin' && secretKey !== 'admin') {
       e.preventDefault();
       alert('Invalid Admin');
     } else {
@@ -66,7 +94,7 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
       if (userType === 'user' && !emailError && !passwordError) {
         onRegister(email);
         handleRegister();
-      } else if (userType === 'admin' && !emailError && !passwordError && secretkey === 'admin') {
+      } else if (userType === 'admin' && !emailError && !passwordError && secretKey === 'admin') {
         onRegister(email);
         handleRegister();
       }
@@ -75,19 +103,20 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
 
   const styles = {
     container: {
+      backgroundColor: 'White',
       textAlign: 'center',
       maxWidth: '400px',
       margin: 'auto',
       marginTop: '100px',
       padding: '20px',
-      marginLeft: '100px',
+      marginLeft: '300px',
       boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)',
       borderRadius: '5px',
     },
     heading: {
       fontSize: '28px',
       marginBottom: '20px',
-      color: '#ffdab9',
+      color: 'Black',
     },
     radioGroup: {
       marginTop: '10px',
@@ -106,6 +135,7 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
       fontWeight: 'bold',
       marginBottom: '5px',
       color: '#333',
+      textAlign: 'left',
     },
     input: {
       padding: '10px',
@@ -115,7 +145,7 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
     },
     button: {
       padding: '12px',
-      backgroundColor: '#007bff',
+      backgroundColor: 'Black',
       color: '#fff',
       border: 'none',
       borderRadius: '3px',
@@ -133,7 +163,7 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
       color: '#333',
     },
     toggleButton: {
-      backgroundColor: 'transparent',
+      backgroundColor: 'Black',
       border: 'none',
       color: '#007bff',
       textDecoration: 'underline',
@@ -143,72 +173,76 @@ const RegisterForm = ({ onRegister, onToggleForm, onRegisteredSuccessfully }) =>
 
   return (
     <div>
-      <div style={{
-        backgroundImage: 'url("https://t3.ftcdn.net/jpg/04/61/99/04/240_F_461990414_MTlPVE2tUo00dxdebWJ4qXT1GQSE2rB8.jpg")',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        minHeight: '100vh',
-        overflow: 'hidden',
-      }}>
+      <div style={{/* ... */}}>
         <div style={styles.container}>
-          <h2 style={styles.heading}>Register</h2>
-          <div style={styles.radioGroup}>
-            Register as:
-            <input
-              type="radio"
-              name="UserType"
-              value="user"
-              onChange={(e) => setUserType(e.target.value)}
-              style={styles.radio}
-            />
-            User
-            <input
-              type="radio"
-              name="UserType"
-              value="admin"
-              onChange={(e) => setUserType(e.target.value)}
-              style={styles.radio}
-            />
-            Admin
+          <Typography variant="h6" component="h6" gutterBottom>
+            <b>REGISTER AS:</b>
+          </Typography>
+          <div>
+            <Typography>
+              <Radio
+                type="radio"
+                name="UserType"
+                value="user"
+                checked={userType === "user"}
+                onChange={(e) => setUserType(e.target.value)}
+                style={styles.radio}
+              />
+              User
+              <Radio
+                type="radio"
+                name="UserType"
+                value="admin"
+                checked={userType === "admin"}
+                onChange={(e) => setUserType(e.target.value)}
+                style={styles.radio}
+              />
+              Admin
+            </Typography>
           </div>
           {userType === 'admin' ? (
             <form style={styles.form}>
-              <label style={styles.label}><b>Secret Key</b></label>
-              <input
+              <Typography style={styles.label}><b>Secret Key</b></Typography>
+              <TextField
                 type="password"
-                value={secretkey}
+                value={secretKey}
                 placeholder="Secret Key"
+                size='small'
                 onChange={(e) => setSecretKey(e.target.value)}
-                style={styles.input}
-              />
+              />&nbsp;
             </form>
           ) : null}
-
           <form style={styles.form}>
-            <label style={styles.label}><b>Email</b></label>
-            <input
+            <TextField
+              label="InstituteKey"
+              value={instituteKey}
+              onChange={(e) => setInstituteKey(e.target.value)}
+              required
+              size='small'
+            />
+            <TextField
               type="email"
-              placeholder="Email"
+              label="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              style={styles.input}
+              size='small'
             />
             {emailError && <p style={styles.error}>{emailError}</p>}
-            <label style={styles.label}><b>Password</b></label>
-            <input
+            <TextField
               type="password"
-              placeholder="Password"
+              label="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              style={styles.input}
+              size='small'
             />
             {passwordError && <p style={styles.error}>{passwordError}</p>}
             <button onClick={handleSubmit} style={styles.button}>Register</button>
           </form>
-
-          <p style={styles.toggleMessage}>Already have an account? <button onClick={onToggleForm} style={styles.toggleButton}>Login</button></p>
+          <div>
+            <Typography padding={"15px"}>Already have an account?   <button onClick={onToggleForm} style={styles.button}>Login</button></Typography>
+          </div>
           {registeredSuccessfully && (
             <div className="alert-box">
               <p>
