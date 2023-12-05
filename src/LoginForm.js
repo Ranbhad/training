@@ -9,27 +9,32 @@ const LoginForm = ({ onLogin, onToggleForm }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     try {
       const response = await axios.post('http://localhost:8080/login', {
         email: email,
         password: password,
+      }, {
+        withCredentials: true,  // Move these options here
+        crossDomain: true,
       });
-
+  
       if (response.status === 200) {
         setMessage('Login successful');
         setUserType(response.data.userType);
-
+  
         // Redirect to the appropriate dashboard based on userType
         onLogin(email, response.data.userType);
       } else {
         setMessage('User not found. Please check your credentials.');
       }
+      console.log('Response:', response);
     } catch (error) {
       console.error('Error logging in:', error);
       setMessage('Login failed. Please try again.');
     }
   };
+  
 
   const styles = {
     container: {
@@ -38,14 +43,15 @@ const LoginForm = ({ onLogin, onToggleForm }) => {
       margin: 'auto',
       marginTop: '100px',
       padding: '20px',
-      marginLeft: '100px',
+      marginLeft: '300px',
       boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)',
       borderRadius: '3px',
+      backgroundColor: 'White'
     },
     heading: {
       fontSize: '28px',
       marginBottom: '20px',
-      color: '#ffdab9',
+      color: 'Black',
     },
     form: {
       display: 'flex',
@@ -68,7 +74,7 @@ const LoginForm = ({ onLogin, onToggleForm }) => {
     },
     button: {
       padding: '12px',
-      backgroundColor: '#007bff',
+      backgroundColor: 'Black',
       color: '#fff',
       border: 'none',
       borderRadius: '5px',
@@ -86,7 +92,7 @@ const LoginForm = ({ onLogin, onToggleForm }) => {
       color: '#333',
     },
     toggleButton: {
-      backgroundColor: 'transparent',
+      backgroundColor: 'Black',
       border: 'none',
       color: '#007bff',
       textDecoration: 'underline',
@@ -97,7 +103,7 @@ const LoginForm = ({ onLogin, onToggleForm }) => {
   return (
     <div>
       <div style={{
-        backgroundImage: 'url("https://t3.ftcdn.net/jpg/04/61/99/04/240_F_461990414_MTlPVE2tUo00dxdebWJ4qXT1GQSE2rB8.jpg")',
+        backgroundImage: 'url("https://t4.ftcdn.net/jpg/05/24/00/19/240_F_524001951_3pFrgt8uaKLpiSuOhCK5Vl4Dhc5VDOOS.jpg")',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         minHeight: '100vh',
@@ -132,7 +138,7 @@ const LoginForm = ({ onLogin, onToggleForm }) => {
           </form>
           <p style={styles.message}>{message}</p>
           <p style={styles.toggleMessage}>
-            Don't have an account? <button onClick={onToggleForm} style={styles.toggleButton}>Register</button>
+            Don't have an account? <button onClick={onToggleForm} style={styles.button}>Register</button>
           </p>
         </div>
       </div>
