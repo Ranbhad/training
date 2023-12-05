@@ -24,29 +24,33 @@ const App = () => {
         </>
       ) : (
         <>
-{registeredSuccessfully ? (
-  <div className="alert-box">
-    <p>
-      Registered successfully! Go to{' '}
-      <button onClick={() => setShowRegisterForm(false)}>Login</button>
-    </p>
-  </div>
-) : (
-  <>
-    {showRegisterForm ? (
-      <RegisterForm
-        onRegister={() => setRegisteredSuccessfully(true)}
-        onToggleForm={() => setShowRegisterForm(false)}
-      />
-    ) : (
-      <LoginForm
-        onLogin={(email, userType) => setLoggedInUser({ email, userType })}
-        onToggleForm={() => setShowRegisterForm(true)}
-      />
-    )}
-  </>
-)}
-
+          {registeredSuccessfully ? (
+            <div className="alert-box">
+              <p>
+                Registered successfully! Go to{' '}
+                <button onClick={() => setShowRegisterForm(true)}>Login</button>
+              </p>
+            </div>
+          ) : (
+            <>
+              {showRegisterForm ? (
+                <>
+                  <RegisterForm
+                    onRegister={() => setRegisteredSuccessfully(true)}
+                    onToggleForm={() => setShowRegisterForm(false)}
+                    onRegisteredSuccessfully={() => setShowRegisterForm(true)} 
+                  />
+                </>
+              ) : (
+                <>
+                  <LoginForm
+                    onLogin={(email, userType) => setLoggedInUser({ email, userType })}
+                    onToggleForm={() => setShowRegisterForm(true)}
+                  />
+                </>
+              )}
+            </>
+          )}
         </>
       )}
     </div>
