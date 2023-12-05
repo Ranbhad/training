@@ -16,10 +16,14 @@ import {
   Paper,
   Tabs,
   Tab,
-  Box,
+  Box, Typography, Container,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
-const UserDashboard = () => {
+const UserDashboard = ({onBackToLogin, loggedInUser}) => {
+  const navigate = useNavigate();
+  const [showStudentCoursesDialog, setShowStudentCoursesDialog] = useState(false);
+  const [selectedStudentCourses, setSelectedStudentCourses] = useState([]);
   const [courses, setCourses] = useState([]);
   const [uniqueCourses, setUniqueCourses] = useState([]);
   const [selectedCourseDetails, setSelectedCourseDetails] = useState([]);
@@ -38,12 +42,38 @@ const UserDashboard = () => {
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [showEnrollStudentTab, setShowEnrollStudentTab] = useState(false);
   const [enrolledStudents, setEnrolledStudents] = useState([]);
+// Add this state variable
+const [showPaymentForm, setShowPaymentForm] = useState(false);
+
+const handleStudentClick = async (studentId) => {
+  try {
+    // Fetch the courses registered by the selected student
+    const response = await axios.get(`http://localhost:8080/api/registered-students/${studentId}`);
+    const courses = response.data;
+
+    // Update the state with the fetched courses
+    setSelectedStudentCourses(courses);
+
+    // Open the dialog to display the courses
+    setShowStudentCoursesDialog(true);
+  } catch (error) {
+    console.error('Error fetching registered courses:', error.message);
+  }
+};
+
+  const handleBackButtonClick = () => {
+    console.log('Navigating to /login');
+    onBackToLogin();
+    navigate('/login');
+  };
 
   const handlePayment = (courseName) => {
     // Implement your payment logic here
     // For demonstration purposes, let's just show the payment dialog
     setShowPaymentDialog(true);
+    setShowPaymentForm(true); // Set the state to true when the payment dialog is opened
   };
+  
 
   const handlePaymentDialogClose = () => {
     // Close the payment dialog
@@ -83,30 +113,73 @@ const UserDashboard = () => {
     }));
   };
 
+  const [instituteKey, setInstituteKey] = useState('');
+  const [userDetails, setUserDetails] = useState({});
+  const [uniqueCourseNames, setUniqueCourseNames] = useState([]);
+  const [selectedCourses, setSelectedCourses] = useState([]);
+  const [fetchedCourses, setFetchedCourses] = useState([]);
+  const [fetchedStudents, setFetchedStudents] = useState([]);
+
+  const fetchUserDetails = async () => {
+    try {
+      // Use the logged-in user's email to fetch user details
+      const response = await axios.get(`http://localhost:8080/api/user?email=${loggedInUser.email}`);
+      console.log('User Details Response:', response);
+
+      // Access and log the instituteKey
+      const instituteKeyFromResponse = response.data.instituteKey;
+      console.log('Institute Key:', instituteKeyFromResponse);
+
+      // Set the instituteKey state with the fetched value
+      setInstituteKey(instituteKeyFromResponse);
+
+      // Fetch courses based on the institute key
+      const coursesResponse = await axios.get(`http://localhost:8080/api/courses/user?email=${loggedInUser.email}`);
+
+      console.log('Courses Response:', coursesResponse);
+      console.log('Courses Response Data:', coursesResponse.data);
+
+      // Set the fetched courses in the state
+      setFetchedCourses(coursesResponse.data);
+
+      // Update the user details state
+      setUserDetails(response.data);
+      const uniqueNames = Array.from(new Set(fetchedCourses.map(course => course.name)));
+      setUniqueCourseNames(uniqueNames);
+
+    } catch (error) {
+      console.error('error while fetching courses:', error.message);
+      console.error('Error fetching user details:', error.message);
+    }
+  };
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const coursesResponse = await axios.get('http://localhost:8080/api/courses');
-        setCourses(coursesResponse.data);
-
-        const studentsResponse = await axios.get('http://localhost:8080/api/registered-students');
-        setRegisteredStudents(studentsResponse.data);
-        
-        
-
-        // Extract unique course names
-        const uniqueCourseNames = [...new Set(coursesResponse.data.map((course) => course.name))];
-        setUniqueCourses(uniqueCourseNames);
-        const enrolledStudentsResponse = await axios.get('http://localhost:8080/api/students');
-        setEnrolledStudents(enrolledStudentsResponse.data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
+    console.log('Executing fetchUserDetails useEffect');
+    console.log('loggedInUser:', loggedInUser);
+    fetchUserDetails();
+  }, [loggedInUser]);
+  const fetchStudents = async () => {
+    try {
+      // Fetch students based on the institute key and user email
+      const studentsResponse = await axios.get(`http://localhost:8080/api/students/students?instituteKey=${instituteKey}`);
+      setFetchedStudents(studentsResponse.data);
+    } catch (error) {
+      console.error('Error fetching students:', error.message);
+    }
+  };
+  useEffect(() => {
+    console.log('Executing fetchUserDetails useEffect');
+    console.log('loggedInUser:', loggedInUser);
+  
+    if (instituteKey && loggedInUser.email) {
+      fetchStudents();
+    }
+  }, [instituteKey, loggedInUser.email]);
+  const handleCourseClick = (courseName) => {
+    // Filter courses with the selected name
+    const selectedCoursesByName = fetchedCourses.filter(course => course.name === courseName);
+    setSelectedCourses(selectedCoursesByName);
+  };
+  
   const handleRegister = async (course) => {
     try {
       // Fetch the details for the selected course
@@ -116,6 +189,7 @@ const UserDashboard = () => {
       setSelectedCourse(course);
       setShowRegistrationForm(true);
       setStudentDetails({
+        studentId: '',
         name: '',
         email: '',
         mobile: '',
@@ -127,6 +201,26 @@ const UserDashboard = () => {
       console.error('Error fetching course details:', error.message);
     }
   };
+  const [selectregisteredStudents, setSelectRegisteredStudents] = useState([]);
+  
+  const fetchRegisteredStudents = async () => {
+    try {
+      // Fetch students based on the institute key and user email
+      const registeredStudentsResponse = await axios.get(`http://localhost:8080/api/registered-students?instituteKey=${instituteKey}`);
+      setSelectRegisteredStudents(registeredStudentsResponse.data);
+    } catch (error) {
+      console.error('Error fetching students:', error.message);
+    }
+  };
+  useEffect(() => {
+    console.log('Executing fetchUserDetails useEffect');
+    console.log('loggedInUser:', loggedInUser);
+  
+    if (instituteKey && loggedInUser.email) {
+      fetchRegisteredStudents();
+    }
+  }, [instituteKey, loggedInUser.email]);
+  
 
   const handleAddBatch = async (courseName) => {
  try {
@@ -134,17 +228,6 @@ const UserDashboard = () => {
       setSelectedBatchCourses(coursesWithSameName);
       setShowAddBatchDialog(true);
 
-// Fetch batches for the selected course
-      // const batchesResponse = await axios.get(`http://localhost:8080/api/batches/${coursesWithSameName[0]?.id}`);
-      // const batches = batchesResponse.data;
-
-      // // Generate student IDs for each batch
-      // const batchsWithStudentIds = batches.map((batch, index) => ({
-      //   ...batch,
-      //   studentId: `${batch.batch}${index + 1}`, // Generate student ID
-      // }));
-
-      // setSelectedBatchCourses(batchsWithStudentIds);
     } catch (error) {
       console.error('Error fetching batches for the course:', error.message);
     }
@@ -162,14 +245,17 @@ const UserDashboard = () => {
         name: studentDetails.name,
         email: studentDetails.email,
         mobile: studentDetails.mobile,
+        instituteKey: instituteKey,
         // studentId: selectedBatchCourses[0]?.studentId, // Use the student ID from the first batch
       });
   
       console.log('Student registered successfully:', response.data);
+      setRegisteredStudents((prevData) => [...prevData, response.data]);
   
       setShowRegistrationForm(false);
       setSelectedCourse(null);
       setStudentDetails({
+        instituteKey: '',
         name: '',
         email: '',
         mobile: '',
@@ -187,15 +273,17 @@ const UserDashboard = () => {
   const handleSubmit = async () => {
     try {
       const response = await axios.post('http://localhost:8080/api/students', {
+        instituteKey: instituteKey,
         name: studentDetails.name,
         email: studentDetails.email,
         mobile: studentDetails.mobile,
       });
   
       console.log('Student registered successfully:', response.data);
-  
+      setEnrolledStudents((prevData) => [...prevData, response.data]);
       setShowEnrollStudentTab(false);
       setStudentDetails({
+        instituteKey: '',
         name: '',
         email: '',
         mobile: '',
@@ -205,23 +293,66 @@ const UserDashboard = () => {
     }
   };
 
+  const handleDelete={
+    
+  }
+
+  const styles = {
+    container: {
+      textAlign: 'center',
+      // maxWidth: '400px',
+      margin: 'auto',
+      marginTop: '50px',
+      padding: '20px',
+      // marginLeft: '300px',
+      boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)',
+      borderRadius: '3px',
+      backgroundColor: 'White'
+    },
+    button: {
+      padding: '0px',
+      backgroundColor: 'Black',
+      color: '#fff',
+      border: 'none',
+      borderRadius: '5px',
+      fontSize: '14px',
+      cursor: 'pointer',
+    },
+  };
+
   return (
-    <div>
-      <h2>User Dashboard</h2>
-      <Box sx={{ position: 'absolute', top: 0, right: 0, padding: '10px' }}>
-        <Button variant="contained" color="primary" onClick={handleEnrollButtonClick}>
-          Enroll Student
+    <div style={{
+      backgroundImage: 'url("https://t4.ftcdn.net/jpg/05/24/00/19/240_F_524001951_3pFrgt8uaKLpiSuOhCK5Vl4Dhc5VDOOS.jpg")',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      minHeight: '100vh',
+      overflow: 'hidden',
+    }}>
+      <Container style={styles.container}>
+      <h2><p>Welcome {loggedInUser ? loggedInUser.email : 'Loading...'}</p></h2>
+
+      <Typography  variant="h4" component="h4" gutterBottom>
+        Manager Dashboard
+      </Typography>
+      <Button sx={{ position: 'absolute', top: 59, left: 50, padding: '10px' }} variant="contained" onClick={handleBackButtonClick} style={{ backgroundColor: 'Black', marginBottom: '20px', Marginleft:'0px' }}>
+          Back to Login
         </Button>
-      </Box>
       <Tabs value={selectedTab} onChange={(event, newValue) => setSelectedTab(newValue)}>
         <Tab label="Your Courses" />
         <Tab label="Batches" />
         <Tab label="Registered Students" />
+        <Box sx={{ position: 'absolute', top: 0, right: 0, padding: '10px' }}>
+        <Button variant="contained" color='inherit' onClick={handleEnrollButtonClick}>
+          Enroll Student
+        </Button>
+      </Box>
       </Tabs>
 
       <Box hidden={selectedTab !== 0}>
-        <h3>Your Courses</h3>
-        {uniqueCourses.length === 0 ? (
+      <Typography align="center" variant="h5" component="h5" gutterBottom>
+              Your Course
+            </Typography>
+        {/* {uniqueCourseNames.length === 0 ? (
           <p>No courses available.</p>
         ) : (
           <TableContainer component={Paper}>
@@ -233,21 +364,50 @@ const UserDashboard = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {uniqueCourses.map((courseName) => (
+                {uniqueCourseNames.map((courseName) => (
                   <TableRow key={courseName}>
                     <TableCell>{courseName}</TableCell>
                     <TableCell>
-                      <Button onClick={() => handleAddBatch(courseName)}>Add Batch</Button>
+                      <Button variant='contained' onClick={() => handleAddBatch(courseName)} color='inherit'>Add Batch</Button>
+                    </TableCell>
+                    </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer> 
+          )} */}
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                <TableCell>Course Name</TableCell>
+                  <TableCell>Batch</TableCell>
+                  <TableCell>Course Fees</TableCell>
+                  <TableCell>Course Duration</TableCell>
+                  <TableCell>Strength Of Students</TableCell>
+                  <TableCell>Action</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {fetchedCourses.map((course) => (
+                  <TableRow key={course.id}>
+                    <TableCell>{course.name}</TableCell>
+                    <TableCell>{course.batch}</TableCell>
+                    <TableCell>{course.fees}</TableCell>
+                    <TableCell>{course.duration}</TableCell>
+                    <TableCell>{course.strengthOfStudents}</TableCell>
+                    <TableCell>
+                      <Button onClick={() => handleRegister(course)} variant='contained' color='inherit'>Register</Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
-        )}
+       
       </Box>
 
-      <Dialog open={showAddBatchDialog} onClose={() => setShowAddBatchDialog(false)} maxWidth="xl" fullWidth>
+      {/* <Dialog open={showAddBatchDialog} onClose={() => setShowAddBatchDialog(false)} maxWidth="xl" fullWidth>
         <DialogTitle>{`Add Batch for ${selectedBatchCourses[0]?.name}`}</DialogTitle>
         <DialogContent>
           <TableContainer component={Paper}>
@@ -262,27 +422,27 @@ const UserDashboard = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {selectedBatchCourses.map((course) => (
+                {selectedCourses.map((course) => (
                   <TableRow key={course.id}>
                     <TableCell>{course.batch}</TableCell>
                     <TableCell>{course.fees}</TableCell>
                     <TableCell>{course.duration}</TableCell>
                     <TableCell>{course.strengthOfStudents}</TableCell>
                     <TableCell>
-                      <Button onClick={() => handleRegister(course)}>Register</Button>
+                      <Button onClick={() => handleRegister(course)} variant='contained' color='inherit'>Register</Button>
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
-        </DialogContent>
+        </DialogContent> 
         <DialogActions>
-          <Button onClick={() => setShowAddBatchDialog(false)} color="primary">
+          <Button onClick={() => setShowAddBatchDialog(false)} variant='contained' style={{backgroundColor: "Black"}}>
             Close
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog>*/}
       <Dialog open={showEnrollStudentTab} onClose={() => setShowEnrollStudentTab(false)} maxWidth="md" fullWidth >
         <DialogTitle>{`Registration Form for Institute`}</DialogTitle>
         <Box sx={{ justifyContent: 'center', border: '1px solid lightgray', margin: '10px'}}>
@@ -316,10 +476,10 @@ const UserDashboard = () => {
         
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowEnrollStudentTab(false)} color="primary">
+          <Button onClick={() => setShowEnrollStudentTab(false)} variant='contained' style={{backgroundColor: "Black"}}>
             Cancel
           </Button>&nbsp;&nbsp;
-          <Button onClick={handleSubmit} color="primary">
+          <Button onClick={handleSubmit} variant='contained' style={{backgroundColor: "Black"}}>
             Submit
           </Button>&nbsp;&nbsp;
         </DialogActions>
@@ -329,59 +489,59 @@ const UserDashboard = () => {
         <DialogTitle>{`Registration Form for ${selectedCourse?.name}`}</DialogTitle>
         <Box sx={{ justifyContent: 'center', border: '1px solid lightgray', margin: '10px'}}>
         <DialogContent>
-
+{/* 
           <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
               <TextField label="StudentID" value={selectedCourseDetails.batch} disabled size="small" />&nbsp;&nbsp;
               <TextField label="Course Name" value={selectedCourseDetails.name} disabled size="small" />&nbsp;&nbsp;
               <TextField label="Course Fees" value={selectedCourseDetails.fees} disabled size="small" />&nbsp;&nbsp;
               <TextField label="Course Duration" value={selectedCourseDetails.duration} disabled size="small" />&nbsp;&nbsp;
-            </div>
+            </div> */}
             <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
             <TextField
         label="Student ID"
         name="studentId"
+        size='small'
         value={studentDetails.studentId}
         onChange={(e) => {
           handleChange(e);
           handleStudentIdChange(e.target.value);
         }}
-      />
+      />&nbsp;&nbsp;
       <TextField
         label="Name"
         name="name"
+        size='small'
         value={studentDetails.name}
-        // Other input fields for email, mobile, etc.
-        // Add them based on your data structure
-      />
+        />&nbsp;&nbsp;
       <TextField
         label="Email"
         name="email"
+        size='small'
         value={studentDetails.email}
-        // Other input fields for email, mobile, etc.
-        // Add them based on your data structure
-      />
+        />&nbsp;&nbsp;
       <TextField
         label="Mobile"
         name="mobile"
+        size='small'
         value={studentDetails.mobile}
-        // Other input fields for email, mobile, etc.
-        // Add them based on your data structure
-      />
+         />&nbsp;&nbsp;
             </div>
-        
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setShowRegistrationForm(false)} color="primary">
+          <Button onClick={() => setShowRegistrationForm(false)} variant='contained' style={{backgroundColor: "Black"}}>
             Cancel
           </Button>&nbsp;&nbsp;
-          <Button onClick={handleFormSubmit} color="primary">
+          <Button onClick={handleFormSubmit} variant='contained' style={{backgroundColor: "Black"}}>
             Submit
           </Button>&nbsp;&nbsp;
         </DialogActions>
         </Box>
       </Dialog>
       <Box hidden={selectedTab !== 2}>
-        <h3>Registered Students</h3>
+      <Typography align="center" variant="h5" component="h5" gutterBottom>
+              Registered Students
+            </Typography>
+            {fetchedStudents.length > 0 && (
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
@@ -390,49 +550,61 @@ const UserDashboard = () => {
                 <TableCell>Name</TableCell>
                 <TableCell>Email</TableCell>
                 <TableCell>Mobile</TableCell>
+                <TableCell>Total Fees</TableCell>
+                <TableCell>Paid Fees</TableCell>
+                <TableCell>Balance Fees</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {enrolledStudents.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell>{student.studentId}</TableCell>
-                  <TableCell>{student.name}</TableCell>
+            {fetchedStudents.map((student) => (
+              <TableRow key={student.id}>
+                <TableCell>
+                  <Button onClick={() => handleStudentClick(student.studentId)}>{student.studentId}</Button>
+                </TableCell>
+                <TableCell>{student.name}</TableCell>
                   <TableCell>{student.email}</TableCell>
                   <TableCell>{student.mobile}</TableCell>
+                  <TableCell>{student.totalFees}</TableCell>
+                  <TableCell>{student.paidFees}</TableCell>
+                  <TableCell>{student.balanceFees}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
+            )}
       </Box>
 
       <Box hidden={selectedTab !== 1}>
-        <h3>Batches and Registered Students</h3>
+      <Typography align="center" variant="h5" component="h5" gutterBottom>
+              Batches
+            </Typography>
         <TableContainer component={Paper}>
           <Table>
             <TableHead>
               <TableRow>
                 <TableCell>Batch</TableCell>
+                <TableCell>StudentID</TableCell>
                 <TableCell>Course</TableCell>
                 <TableCell>Registered Students</TableCell>
                 <TableCell>Action</TableCell>
+                <TableCell>Withdraw</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {registeredStudents.map((student) => (
+              {selectregisteredStudents.map((student) => (
                 <TableRow key={student.id}>
+                  <TableCell>{student.batch}</TableCell>
                   <TableCell>{student.studentId}</TableCell>
                   <TableCell>{student.courseName}</TableCell>
                   <TableCell>{student.name}</TableCell>
-                  {/* <TableCell>
-                    {student.registeredStudents.map((student) => (
-                      <div key={student.id}>
-                        {student.name} - {student.email}
-                      </div>
-                    ))}
-                  </TableCell> */}
                   <TableCell>
-                    <Button onClick={handlePayment}>Pay</Button>
+                    <Button onClick={handlePayment} style={styles.button}>Pay</Button>
+                  </TableCell>
+                  <TableCell>
+                    <Button variant='contained' onClick={handleDelete} color='inherit'>
+                      Withdraw
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -441,48 +613,95 @@ const UserDashboard = () => {
         </TableContainer>
       </Box>
       <Dialog open={showPaymentDialog} onClose={handlePaymentDialogClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{`Payment for ${selectedCourse?.name}`}</DialogTitle>
-        <DialogContent>
-          <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
-              <TextField label="StudentID" value={selectedCourseDetails.batch} disabled size="small" />&nbsp;&nbsp;
-              <TextField label="Course Name" value={selectedCourseDetails.name} disabled size="small" />&nbsp;&nbsp;
-              <TextField label="Course Fees" value={selectedCourseDetails.fees} disabled size="small" />&nbsp;&nbsp;
-              <TextField label="Course Duration" value={selectedCourseDetails.duration} disabled size="small" />&nbsp;&nbsp;
-            </div>
-          {/* Payment Form (Replace with your actual payment form) */}
-          <TextField
-            label="Card Number"
-            type="text"
-            // Add necessary properties and handlers for card number input
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Expiration Date"
-            type="text"
-            // Add necessary properties and handlers for expiration date input
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="CVV"
-            type="text"
-            // Add necessary properties and handlers for CVV input
-            fullWidth
-            margin="normal"
-          />
-          {/* Add more fields as needed for your payment form */}
+  <DialogTitle>{`Payment for ${selectedCourse?.name}`}</DialogTitle>
+  <DialogContent>
+    {showPaymentForm && (
+      <>
+        <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
+          <TextField label="StudentID" value={studentDetails.studentId} disabled size="small" />&nbsp;&nbsp;
+          <TextField label="Student Name" value={studentDetails.name} disabled size="small" />&nbsp;&nbsp;
+          <TextField label="Student Email" value={studentDetails.email} disabled size="small" />&nbsp;&nbsp;
+          <TextField label="Student Phone" value={studentDetails.mobile} disabled size="small" />&nbsp;&nbsp;
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'row', margin: '20px' }}>
+          <TextField label="Batch" value={selectedCourseDetails.batch} disabled size="small" />&nbsp;&nbsp;
+          <TextField label="Course Name" value={selectedCourseDetails.name} disabled size="small" />&nbsp;&nbsp;
+          <TextField label="Course Fees" value={selectedCourseDetails.fees} disabled size="small" />&nbsp;&nbsp;
+          <TextField label="Course Duration" value={selectedCourseDetails.duration} disabled size="small" />&nbsp;&nbsp;
+        </div>
+        {/* Payment Form (Replace with your actual payment form) */}
+        <TextField
+          label="Card Number"
+          type="text"
+          // Add necessary properties and handlers for card number input
+          fullWidth
+          margin="normal"
+        />
+        <TextField
+          label="Expiration Date"
+          type="text"
+          // Add necessary properties and handlers for expiration date input
+          fullWidth
+          margin="normal"
+        />
+        <TextField
+          label="CVV"
+          type="text"
+          // Add necessary properties and handlers for CVV input
+          fullWidth
+          margin="normal"
+        />
+        {/* Add more fields as needed for your payment form */}
+      </>
+    )}
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={handlePaymentDialogClose} variant='contained' style={{ backgroundColor: "Black" }}>
+      Cancel
+    </Button>
+    <Button onClick={handlePaymentSubmit} variant='contained' style={{ backgroundColor: "Black" }}>
+      Submit Payment
+    </Button>
+  </DialogActions>
+</Dialog>
+<Dialog
+  open={showStudentCoursesDialog}
+  onClose={() => setShowStudentCoursesDialog(false)}
+  maxWidth="md"
+  fullWidth
+>
+  <DialogTitle>Registered Courses</DialogTitle>
+  <DialogContent>
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Course Name</TableCell>
+            {/* Add more columns as needed */}
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {selectedStudentCourses.map((course) => (
+            <TableRow key={course.id}>
+              <TableCell>{course.courseName}</TableCell>
+              <TableCell>{course.courseFees}</TableCell>
+              <TableCell>{course.batch}</TableCell>
+              {/* Add more cells based on the course data */}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setShowStudentCoursesDialog(false)} variant='contained' style={{ backgroundColor: "Black" }}>
+      Close
+    </Button>
+  </DialogActions>
+</Dialog>
 
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handlePaymentDialogClose} color="primary">
-            Cancel
-          </Button>
-          <Button onClick={handlePaymentSubmit} color="primary">
-            Submit Payment
-          </Button>
-        </DialogActions>
-      </Dialog>
+
+    </Container>
     </div>
   );
 };
