@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import LoginForm from './LoginForm';
+import MasterLogin from './MasterLogin';
 import RegisterForm from './RegisterForm';
 import UserDashboard from './UserDashboard';
 import AdminDashboard from './AdminDashboard';
+import LoginForm from './LoginForm';
 
 const App = () => {
   const [loggedInUser, setLoggedInUser] = useState(null);
@@ -14,42 +15,38 @@ const App = () => {
       {loggedInUser ? (
         <>
           {loggedInUser.userType === 'admin' ? (
-            <AdminDashboard />
+            <AdminDashboard onBackToLogin={() => setLoggedInUser(null)} loggedInUser={loggedInUser} />
           ) : loggedInUser.userType === 'user' ? (
-            <UserDashboard />
+            <UserDashboard onBackToLogin={() => setLoggedInUser(null)} loggedInUser={loggedInUser} />
           ) : (
             <p>Invalid userType: {loggedInUser.userType}</p>
           )}
         </>
       ) : (
         <>
-          {registeredSuccessfully ? (
-            <div className="alert-box">
-              {/* <p>
-                Registered successfully! Go to{' '}
-                <button onClick={() => setShowRegisterForm(true)}>Login</button>
-              </p> */}
-            </div>
-          ) : (
-            <>
-              {showRegisterForm ? (
-                <>
-                  <RegisterForm
-                    onRegister={() => setRegisteredSuccessfully(true)}
-                    onToggleForm={() => setShowRegisterForm(false)}
-                    onRegisteredSuccessfully={() => setShowRegisterForm(true)} 
-                  />
-                </>
-              ) : (
-                <>
-                  <LoginForm
-                    onLogin={(email, userType) => setLoggedInUser({ email, userType })}
-                    onToggleForm={() => setShowRegisterForm(true)}
-                  />
-                </>
-              )}
-            </>
-          )}
+{registeredSuccessfully ? (
+  <div className="alert-box">
+    <p>
+      Registered successfully! Go to{' '}
+      <button onClick={() => setShowRegisterForm(false)}>Login</button>
+    </p>
+  </div>
+) : (
+  <>
+    {showRegisterForm ? (
+      <RegisterForm
+        onRegister={() => setRegisteredSuccessfully(true)}
+        onToggleForm={() => setShowRegisterForm(false)}
+      />
+    ) : (
+      <LoginForm
+        onLogin={(email, userType) => setLoggedInUser({ email, userType })}
+        onToggleForm={() => setShowRegisterForm(true)}
+      />
+    )}
+  </>
+)}
+
         </>
       )}
     </div>
